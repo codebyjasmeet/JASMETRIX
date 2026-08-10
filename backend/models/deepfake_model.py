@@ -1,27 +1,27 @@
 from PIL import Image
-import numpy as np
+from models.ai_model import load_ai_model
+
 
 def predict_image(image_path):
+
     print(f"Analyzing: {image_path}")
-    img = Image.open(image_path)
-    print(img.size)
 
-    img = img.resize((224, 224))
-    print("After Resize:", img.size)
+    image = Image.open(image_path).convert("RGB")
 
-    img_array = np.array(img)
-    img_array = img_array / 255.0
+    model = load_ai_model()
 
-    print("Min:", img_array.min())
-    print("Max:", img_array.max())
-    img_array = np.expand_dims(img_array, axis=0)
+    results = model(image)
 
-    print("Final Shape:", img_array.shape)
+    print("Raw AI Result:", results)
 
-    print("Shape:", img_array.shape)
+    best_result = max(results, key=lambda x: x["score"])
+
+    status = best_result["label"].upper()
+    confidence = round(best_result["score"] * 100, 2)
 
     result = {
-        "status": "FAKE",
-        "confidence": 97.4
-    }   
+        "status": status,
+        "confidence": confidence
+    }
+
     return result
