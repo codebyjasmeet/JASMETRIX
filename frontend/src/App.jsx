@@ -5,54 +5,89 @@ import FeatureCard from "./components/FeatureCard";
 
 function App() {
   const [fileName, setFileName] = useState("No file selected");
-  const[selectedFile, setSelectedFile]=useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [image, setImage] = useState(null);
+
   const [showResult, setShowResult] = useState(false);
   const [selectedMode, setSelectedMode] = useState("image");
+
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
-const [confidence, setConfidence] = useState(0);
-async function analyzeImage() {
-console.log("Analyze function started");
-  if (!selectedFile) {
-    alert("Please choose an image first!");
-    return;
+  const [confidence, setConfidence] = useState(0);
+
+  const [realScore, setRealScore] = useState(0);
+  const [fakeScore, setFakeScore] = useState(0);
+
+  async function analyzeImage() {
+    console.log("Analyze function started");
+
+    if (!selectedFile) {
+      alert("Please choose an image first!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      console.log("Sending request...");
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/analyze",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      console.log("Response:", response);
+
+      if (!response.ok) {
+        throw new Error("Backend request failed");
+      }
+
+      const data = await response.json();
+
+      console.log("Response Data:", data);
+
+      setStatus(data.status);
+      setConfidence(data.confidence);
+      setRealScore(data.real_score ?? 0);
+      setFakeScore(data.fake_score ?? 0);
+
+      setShowResult(true);
+    } catch (error) {
+      console.log("Analysis Error:", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  try {
-    setLoading(true);
+  async function handleFileChange(e) {
+  if (e.target.files.length > 0) {
+    const file = e.target.files[0];
+
+    const fileBuffer = await file.arrayBuffer();
+
+    const fileCopy = new File(
+      [fileBuffer],
+      file.name,
+      { type: file.type }
+    );
+
+    setSelectedFile(fileCopy);
+    setFileName(file.name);
+
+    setImage(URL.createObjectURL(file));
+
     setShowResult(false);
-
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-console.log("sending request.....");
-    const response = await fetch("http://127.0.0.1:8000/analyze", {
-      method: "POST",
-      body: formData,
-    });
-    console.log(response);
-
-    const data = await response.json();
-    
-console.log("Response Data:", data);
-
-if (!data) {
-  alert("Backend returned null!");
-  setLoading(false);
-  return;
-}
-
-    setStatus(data.status);
-    setConfidence(data.confidence);
-
-    setLoading(false);
-    setShowResult(true);
-
-  } catch (error) {
-    console.log(error);
-    setLoading(false);
+    setStatus("");
+    setConfidence(0);
+    setRealScore(0);
+    setFakeScore(0);
   }
-
 }
 
   return (
@@ -103,33 +138,18 @@ if (!data) {
         />
       </div>
 
-
       {selectedMode === "image" && (
         <>
           <button
-            onClick={() => {
-              if (!image) {
-                alert("Please choose an image first.");
-                return;
-              }
+            onClick={analyzeImage}
+          >
+            {loading ? "Analyzing..." : "Upload & Analyze"}
+          </button>
 
-              analyzeImage();
-            }}
-            >
-  Upload & Analyze
-</button>
           <input
             type="file"
-            onChange={(e) => {
-              if (e.target.files.length > 0) {
-                const file = e.target.files[0];
-                setSelectedFile(file);
-                setFileName(file.name);
-                setImage(URL.createObjectURL(file));
-                setShowResult(false);
-                setLoading(false);
-              }
-            }}
+            accept="image/*"
+            onChange={handleFileChange}
           />
 
           <p>{fileName}</p>
@@ -150,28 +170,63 @@ if (!data) {
           )}
 
           {showResult && !loading && (
-            <div className="result-card">
-              <h2>🧠 AI Analysis</h2>
+  <div className="result-card">
 
-              <h3>
-                Status: <span className="fake">{status}</span>
-              </h3>
+    <h2>🧠 AI Analysis</h2>
 
-              <p>Confidence:{confidence}</p>
+    <h3>
+      Status:{" "}
+      <span className={status === "FAKE" ? "fake" : "real"}>
+        {status}
+      </span>
+    </h3>
 
-              <p>
-                Possible AI-generated facial inconsistencies detected.
-              </p>
-            </div>
-          )}
+    <div className="confidence-section">
+      <p>
+        Confidence: <strong>{confidence}%</strong>
+      </p>
+
+      <div className="score-row">
+        <span>REAL</span>
+        <div className="score-bar">
+          <div
+            className="score-fill real-fill"
+            style={{ width: `${realScore}%` }}
+          ></div>
+        </div>
+        <span>{realScore}%</span>
+      </div>
+
+      <div className="score-row">
+        <span>FAKE</span>
+        <div className="score-bar">
+          <div
+            className="score-fill fake-fill"
+            style={{ width: `${fakeScore}%` }}
+          ></div>
+        </div>
+        <span>{fakeScore}%</span>
+      </div>
+    </div>
+
+   <p>
+  {status === "FAKE"
+    ? "⚠️ The AI model detected patterns that may indicate AI-generated or manipulated content."
+    : "✅ The AI model found patterns that are more consistent with authentic content."}
+</p>
+
+  </div>
+)}
         </>
       )}
+
       {selectedMode === "video" && (
         <div className="result-card">
           <h2>🎥 Video Detection</h2>
           <p>🚧 Coming Soon</p>
         </div>
       )}
+
       {selectedMode === "audio" && (
         <div className="result-card">
           <h2>🎤 Audio Detection</h2>

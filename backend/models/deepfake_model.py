@@ -14,14 +14,31 @@ def predict_image(image_path):
 
     print("Raw AI Result:", results)
 
-    best_result = max(results, key=lambda x: x["score"])
+    real_score = 0
+    fake_score = 0
 
-    status = best_result["label"].upper()
-    confidence = round(best_result["score"] * 100, 2)
+    for result in results:
+        label = result["label"].lower()
+        score = result["score"]
+
+        if label == "real":
+            real_score = score
+
+        elif label == "fake":
+            fake_score = score
+
+    if fake_score >= real_score:
+        status = "FAKE"
+        confidence = fake_score
+    else:
+        status = "REAL"
+        confidence = real_score
 
     result = {
         "status": status,
-        "confidence": confidence
+        "confidence": round(confidence * 100, 2),
+        "real_score": round(real_score * 100, 2),
+        "fake_score": round(fake_score * 100, 2)
     }
 
     return result
