@@ -36,3 +36,28 @@ async def analyze(file: UploadFile = File(...)):
 
     print("prediction",prediction)
     return prediction
+
+@app.post("/analyze-video")
+async def analyze_video(file: UploadFile = File(...)):
+
+    print("main.py reached video analyze endpoint")
+
+    os.makedirs("uploads/videos", exist_ok=True)
+
+    file_path = os.path.join(
+        "uploads",
+        file.filename
+    )
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(
+            file.file,
+            buffer
+        )
+
+    print("Video received:", file.filename)
+
+    return {
+        "status": "VIDEO_RECEIVED",
+        "message": "Video uploaded successfully. AI video analysis will be added next."
+    }

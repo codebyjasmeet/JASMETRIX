@@ -18,6 +18,10 @@ function App() {
   const [realScore, setRealScore] = useState(0);
   const [fakeScore, setFakeScore] = useState(0);
 
+  const [videoFile, setVideoFile] = useState(null);
+const [videoName, setVideoName] = useState("No video selected");
+const [videoPreview, setVideoPreview] = useState(null);
+
   async function analyzeImage() {
     console.log("Analyze function started");
 
@@ -221,11 +225,82 @@ function App() {
       )}
 
       {selectedMode === "video" && (
-        <div className="result-card">
-          <h2>🎥 Video Detection</h2>
-          <p>🚧 Coming Soon</p>
-        </div>
-      )}
+  <>
+    <input
+      type="file"
+      accept="video/*"
+      onChange={(e) => {
+        if (e.target.files.length > 0) {
+          const file = e.target.files[0];
+
+          setVideoFile(file);
+          setVideoName(file.name);
+
+          if (videoPreview) {
+            URL.revokeObjectURL(videoPreview);
+          }
+
+          setVideoPreview(URL.createObjectURL(file));
+        }
+      }}
+    />
+
+    <p>{videoName}</p>
+
+    {videoPreview && (
+      <video
+        src={videoPreview}
+        controls
+        className="video-preview"
+      />
+    )}
+
+    {videoFile && (
+      <button
+       onClick={async () => {
+  if (!videoFile) {
+    alert("Please choose a video first!");
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("file", videoFile);
+
+    const response = await fetch(
+      "http://127.0.0.1:8000/analyze-video",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Video upload failed");
+    }
+
+    const data = await response.json();
+
+    console.log("Video Response:", data);
+
+    alert(data.message);
+
+  } catch (error) {
+    console.log("Video Error:", error);
+    alert("Video upload failed!");
+  }
+}} 
+      >
+        Upload & Analyze Video
+      </button>
+    )}
+
+    <div className="result-card">
+      <h2>🎥 Video Detection</h2>
+      <p>Video upload and preview are ready.</p>
+    </div>
+  </>
+)}
 
       {selectedMode === "audio" && (
         <div className="result-card">
